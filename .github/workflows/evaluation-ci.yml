@@ -1,0 +1,33 @@
+name: Evaluation CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'evaluation-service/**'
+      - '.github/workflows/evaluation-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'evaluation-service/**'
+      - '.github/workflows/evaluation-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and unit tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: evaluation-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21.x'
+          cache-dependency-path: evaluation-service/go.sum
+      - run: go mod download
+      - run: go build ./...
+      - run: go test ./...
