@@ -2,7 +2,6 @@ import os
 import sys
 import psycopg2
 import requests
-import json
 from psycopg2.extras import RealDictCursor, Json
 from psycopg2.pool import SimpleConnectionPool
 from flask import Flask, request, jsonify
@@ -95,16 +94,20 @@ def create_rule():
         log.info(f"Regra para '{flag_name}' criada com sucesso.")
         return jsonify(new_rule), 201
     except psycopg2.IntegrityError:
-        if conn: conn.rollback()
+        if conn:
+            conn.rollback()
         log.warning(f"Tentativa de criar regra duplicada: '{flag_name}'")
         return jsonify({"error": f"Regra para a flag '{flag_name}' já existe"}), 409
     except Exception as e:
-        if conn: conn.rollback()
+        if conn:
+            conn.rollback()
         log.error(f"Erro ao criar regra: {e}")
         return jsonify({"error": "Erro interno do servidor", "details": str(e)}), 500
     finally:
-        if cur: cur.close()
-        if conn: pool.putconn(conn)
+        if cur:
+            cur.close()
+        if conn:
+            pool.putconn(conn)
 
 @app.route('/rules/<string:flag_name>', methods=['GET'])
 @require_auth
@@ -124,8 +127,10 @@ def get_rule(flag_name):
         log.error(f"Erro ao buscar regra '{flag_name}': {e}")
         return jsonify({"error": "Erro interno do servidor", "details": str(e)}), 500
     finally:
-        if cur: cur.close()
-        if conn: pool.putconn(conn)
+        if cur:
+            cur.close()
+        if conn:
+            pool.putconn(conn)
 
 @app.route('/rules/<string:flag_name>', methods=['PUT'])
 @require_auth
@@ -167,12 +172,15 @@ def update_rule(flag_name):
         log.info(f"Regra para '{flag_name}' atualizada com sucesso.")
         return jsonify(updated_rule), 200
     except Exception as e:
-        if conn: conn.rollback()
+        if conn:
+            conn.rollback()
         log.error(f"Erro ao atualizar regra '{flag_name}': {e}")
         return jsonify({"error": "Erro interno do servidor", "details": str(e)}), 500
     finally:
-        if cur: cur.close()
-        if conn: pool.putconn(conn)
+        if cur:
+            cur.close()
+        if conn:
+            pool.putconn(conn)
 
 @app.route('/rules/<string:flag_name>', methods=['DELETE'])
 @require_auth
@@ -192,12 +200,15 @@ def delete_rule(flag_name):
         log.info(f"Regra para '{flag_name}' deletada com sucesso.")
         return "", 204 # 204 No Content
     except Exception as e:
-        if conn: conn.rollback()
+        if conn:
+            conn.rollback()
         log.error(f"Erro ao deletar regra '{flag_name}': {e}")
         return jsonify({"error": "Erro interno do servidor", "details": str(e)}), 500
     finally:
-        if cur: cur.close()
-        if conn: pool.putconn(conn)
+        if cur:
+            cur.close()
+        if conn:
+            pool.putconn(conn)
 
 if __name__ == '__main__':
     port = int(os.getenv("PORT", 8003))

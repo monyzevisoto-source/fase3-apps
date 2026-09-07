@@ -39,3 +39,20 @@ jobs:
           else
             python -m compileall .
           fi
+
+  lint:
+    name: Lint and static analysis
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: analytics-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: analytics-service/requirements.txt
+      - run: python -m pip install ruff==0.8.6
+      - run: ruff check .
