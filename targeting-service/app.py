@@ -155,7 +155,12 @@ def update_rule(flag_name):
     
     values.append(flag_name) # Adiciona o 'flag_name' para a cláusula WHERE
     
-    query = f"UPDATE targeting_rules SET {', '.join(fields)} WHERE flag_name = %s RETURNING *"
+    if 'rules' in data and 'is_enabled' in data:
+        query = "UPDATE targeting_rules SET rules = %s, is_enabled = %s WHERE flag_name = %s RETURNING *"
+    elif 'rules' in data:
+        query = "UPDATE targeting_rules SET rules = %s WHERE flag_name = %s RETURNING *"
+    else:
+        query = "UPDATE targeting_rules SET is_enabled = %s WHERE flag_name = %s RETURNING *"
     
     conn = None
     cur = None
@@ -212,4 +217,5 @@ def delete_rule(flag_name):
 
 if __name__ == '__main__':
     port = int(os.getenv("PORT", 8003))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    # Bind to all interfaces so the container can receive service traffic.
+    app.run(host='0.0.0.0', port=port, debug=False)  # nosec B104

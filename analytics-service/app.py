@@ -136,4 +136,5 @@ start_worker()
 
 if __name__ == '__main__':
     port = int(os.getenv("PORT", 8005))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    # Bind to all interfaces so the container can receive service traffic.
+    app.run(host='0.0.0.0', port=port, debug=False)  # nosec B104
