@@ -65,7 +65,7 @@ jobs:
         with:
           go-version: '1.25.x'
           cache-dependency-path: evaluation-service/go.sum
-      - run: go install github.com/securego/gosec/v2/cmd/gosec@v2.20.0
+      - run: go install github.com/securego/gosec/v2/cmd/gosec@v2.22.7
       - run: gosec ./...
       - name: Scan dependencies with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
