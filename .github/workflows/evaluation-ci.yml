@@ -49,7 +49,7 @@ jobs:
           cache-dependency-path: evaluation-service/go.sum
       - uses: golangci/golangci-lint-action@v7
         with:
-          version: v2.6.1
+          version: v2.8.0
           working-directory: evaluation-service
 
   security:
