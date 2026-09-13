@@ -13,6 +13,10 @@ on:
       - 'targeting-service/**'
       - '.github/workflows/targeting-ci.yml'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || 'publish' }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -126,3 +130,29 @@ jobs:
         run: |
           docker tag local/targeting-service:${{ steps.image-tag.outputs.tag }} 360302648026.dkr.ecr.us-east-1.amazonaws.com/fiap-fase3-dev-targeting:${{ steps.image-tag.outputs.tag }}
           docker push 360302648026.dkr.ecr.us-east-1.amazonaws.com/fiap-fase3-dev-targeting:${{ steps.image-tag.outputs.tag }}
+      - name: Checkout Argo CD repository
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        uses: actions/checkout@v4
+        with:
+          repository: monyzevisoto-source/fase3-argocd
+          ref: main
+          path: argocd-repo
+          token: ${{ secrets.ARGOCD_REPO_TOKEN }}
+          persist-credentials: false
+      - name: Update image in Argo CD repository
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        uses: fjogeleit/yaml-update-action@dffe9a5223d84653c13374032382f6bb5de8e5ef # v0.17.0
+        with:
+          repository: monyzevisoto-source/fase3-argocd
+          workDir: argocd-repo
+          valueFile: services/targeting-service/deployment.yaml
+          propertyPath: '$.spec.template.spec.containers[?(@.name=="targeting-service")].image'
+          value: 360302648026.dkr.ecr.us-east-1.amazonaws.com/fiap-fase3-dev-targeting:${{ steps.image-tag.outputs.tag }}
+          branch: main
+          masterBranchName: main
+          targetBranch: main
+          commitChange: true
+          createPR: false
+          force: false
+          message: 'deploy: update targeting-service to ${{ steps.image-tag.outputs.tag }}'
+          token: ${{ secrets.ARGOCD_REPO_TOKEN }}
