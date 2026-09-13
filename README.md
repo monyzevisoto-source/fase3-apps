@@ -34,5 +34,7 @@ Se a imagem já estiver atualizada, nenhum commit é criado. Novas execuções d
 publicação cancelam execuções anteriores do mesmo workflow; PRs têm grupos separados.
 A action reserializa o YAML, podendo ajustar a formatação e remover comentários.
 
-O push não usa force. Se houver conflito entre pipelines ou falha de permissão,
+Os jobs GitOps dos cinco serviços compartilham uma fila (`queue: max`) e executam
+um por vez, evitando conflitos entre seus commits. Builds continuam em paralelo.
+O push não usa force. Se houver conflito com uma edição externa ou falha de permissão,
 o pipeline falha e deve ser executado novamente; a imagem permanece no ECR.

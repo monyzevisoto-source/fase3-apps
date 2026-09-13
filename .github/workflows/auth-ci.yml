@@ -78,6 +78,8 @@ jobs:
 
   image:
     name: Build, scan, and publish image
+    outputs:
+      image-tag: ${{ steps.image-tag.outputs.tag }}
     needs: security
     runs-on: ubuntu-latest
     steps:
@@ -119,8 +121,17 @@ jobs:
         run: |
           docker tag local/auth-service:${{ steps.image-tag.outputs.tag }} 360302648026.dkr.ecr.us-east-1.amazonaws.com/fiap-fase3-dev-auth:${{ steps.image-tag.outputs.tag }}
           docker push 360302648026.dkr.ecr.us-east-1.amazonaws.com/fiap-fase3-dev-auth:${{ steps.image-tag.outputs.tag }}
+
+  gitops:
+    name: Update Argo CD image
+    needs: image
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    concurrency:
+      group: fase3-argocd-main
+      queue: max
+    steps:
       - name: Checkout Argo CD repository
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
         uses: actions/checkout@v4
         with:
           repository: monyzevisoto-source/fase3-argocd
@@ -129,19 +140,18 @@ jobs:
           token: ${{ secrets.ARGOCD_REPO_TOKEN }}
           persist-credentials: false
       - name: Update image in Argo CD repository
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
         uses: fjogeleit/yaml-update-action@dffe9a5223d84653c13374032382f6bb5de8e5ef # v0.17.0
         with:
           repository: monyzevisoto-source/fase3-argocd
           workDir: argocd-repo
           valueFile: services/auth-service/deployment.yaml
           propertyPath: '$.spec.template.spec.containers[?(@.name=="auth-service")].image'
-          value: 360302648026.dkr.ecr.us-east-1.amazonaws.com/fiap-fase3-dev-auth:${{ steps.image-tag.outputs.tag }}
+          value: 360302648026.dkr.ecr.us-east-1.amazonaws.com/fiap-fase3-dev-auth:${{ needs.image.outputs.image-tag }}
           branch: main
           masterBranchName: main
           targetBranch: main
           commitChange: true
           createPR: false
           force: false
-          message: 'deploy: update auth-service to ${{ steps.image-tag.outputs.tag }}'
+          message: 'deploy: update auth-service to ${{ needs.image.outputs.image-tag }}'
           token: ${{ secrets.ARGOCD_REPO_TOKEN }}
