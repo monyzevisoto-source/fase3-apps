@@ -11,7 +11,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o app .
 
 # Runtime
-FROM alpine:3.12
+FROM alpine:3.21
 
 RUN apk --no-cache add ca-certificates
 
