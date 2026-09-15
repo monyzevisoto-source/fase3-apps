@@ -1,5 +1,26 @@
 # fase3-apps
 
+## Status dos builds
+
+Cada microsserviço possui um workflow independente no GitHub Actions. Os
+indicadores abaixo refletem o estado do build na branch `main`:
+
+| Microsserviço | Build |
+| --- | --- |
+| auth-service | [![Auth CI](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/auth-ci.yml/badge.svg?branch=main)](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/auth-ci.yml) |
+| flag-service | [![Flag CI](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/flag-ci.yml/badge.svg?branch=main)](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/flag-ci.yml) |
+| targeting-service | [![Targeting CI](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/targeting-ci.yml/badge.svg?branch=main)](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/targeting-ci.yml) |
+| evaluation-service | [![Evaluation CI](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/evaluation-ci.yml/badge.svg?branch=main)](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/evaluation-ci.yml) |
+| analytics-service | [![Analytics CI](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/analytics-ci.yml/badge.svg?branch=main)](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/analytics-ci.yml) |
+
+Verde significa que o último workflow terminou com sucesso; vermelho indica
+falha. Clique no indicador para consultar os detalhes da execução.
+
+## Diagrama do CI/CD
+
+![Fluxo CI/CD](docs/CICD.png)
+
+
 ## Tags das imagens no ECR
 
 Os cinco pipelines publicam imagens com o formato `<versão>-<sha de 7 caracteres>`,
