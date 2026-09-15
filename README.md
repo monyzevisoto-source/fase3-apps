@@ -1,9 +1,55 @@
-# fase3-apps
+# Fase 3 — Aplicações ToggleMaster
+
+Monorepo com os cinco microsserviços da plataforma. Cada serviço é independente,
+possui seu próprio código, Dockerfile, dependências, workflow de CI/CD e imagem
+no Amazon ECR.
+
+## Serviços
+
+| Serviço | Tecnologia | Responsabilidade | Porta |
+| --- | --- | --- | --- |
+| auth-service | Go | Criação e validação de chaves de API | 8001 |
+| flag-service | Python/Flask | CRUD das definições de feature flags | 8002 |
+| targeting-service | Python/Flask | Regras de segmentação das flags | 8003 |
+| evaluation-service | Go | Avaliação rápida das flags com cache Redis | 8004 |
+| analytics-service | Python | Consumo de eventos SQS e gravação no DynamoDB | 8005 |
+
+## Como os serviços funcionam
+
+O evaluation-service recebe as avaliações dos clientes. Em caso de cache miss,
+consulta flag-service e targeting-service, grava o resultado no Redis, responde
+true ou false e publica um evento no SQS. O analytics-service consome esse evento
+e grava os dados na tabela DynamoDB ToggleMasterAnalytics.
+
+O auth-service protege as APIs administrativas. flag-service e targeting-service
+usam PostgreSQL e exigem uma chave de API válida. Os detalhes de endpoints e
+variáveis de ambiente estão no README de cada serviço.
+
+## Estrutura
+
+`text
+.
+├── auth-service/
+├── flag-service/
+├── targeting-service/
+├── evaluation-service/
+├── analytics-service/
+├── .github/workflows/
+│   ├── auth-ci.yml
+│   ├── flag-ci.yml
+│   ├── targeting-ci.yml
+│   ├── evaluation-ci.yml
+│   └── analytics-ci.yml
+└── docs/CICD.png
+`
+
+Cada diretório de serviço contém código-fonte, Dockerfile, dependências, schema
+db/init.sql quando aplicável e README específico. O diretório .github/workflows
+contém um pipeline independente por serviço.
 
 ## Status dos builds
 
-Cada microsserviço possui um workflow independente no GitHub Actions. Os
-indicadores abaixo refletem o estado do build na branch `main`:
+Os indicadores mostram o último resultado do workflow na branch main:
 
 | Microsserviço | Build |
 | --- | --- |
@@ -13,49 +59,49 @@ indicadores abaixo refletem o estado do build na branch `main`:
 | evaluation-service | [![Evaluation CI](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/evaluation-ci.yml/badge.svg?branch=main)](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/evaluation-ci.yml) |
 | analytics-service | [![Analytics CI](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/analytics-ci.yml/badge.svg?branch=main)](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/analytics-ci.yml) |
 
-Verde significa que o último workflow terminou com sucesso; vermelho indica
-falha. Clique no indicador para consultar os detalhes da execução.
+Verde indica sucesso e vermelho indica falha. Clique no badge para ver a
+execução detalhada.
 
 ## Diagrama do CI/CD
 
 ![Fluxo CI/CD](docs/CICD.png)
 
+## Desenvolvimento local
 
-## Tags das imagens no ECR
+Para Go:
 
-Os cinco pipelines publicam imagens com o formato `<versão>-<sha de 7 caracteres>`,
-por exemplo `v1.0.0-a1b2c3d`. A versão vem da tag Git `vMAJOR.MINOR.PATCH`
-mais próxima no histórico do commit; enquanto não houver tags, usam `v1.0.0`.
+`bash
+cd auth-service                 # ou evaluation-service
+go mod download
+go build ./...
+go test ./...
+go run .
+`
 
-Pushes na `main` publicam os serviços selecionados pelos filtros de caminhos.
-Pushes de tags `v*` executam os cinco pipelines e publicam as imagens da versão,
-após as verificações existentes. Pull requests apenas constroem e validam.
-Tags de versão fora do formato `vMAJOR.MINOR.PATCH` interrompem a publicação.
+Para Python:
 
-As imagens já existentes no ECR mantêm suas tags. O novo padrão passa a valer
-quando os workflows atualizados forem executados no GitHub.
+`bash
+cd flag-service                 # ou targeting-service/analytics-service
+python -m pip install -r requirements.txt
+python -m compileall .
+gunicorn --bind 0.0.0.0:8002 app:app
+`
 
-## Atualização automática do Argo CD
+Use a porta correspondente ao serviço. Inicialize os bancos PostgreSQL com o
+arquivo db/init.sql de auth-service, flag-service e targeting-service.
 
-Após o push da imagem no ECR, cada pipeline atualiza somente a imagem do seu
-serviço em `services/<serviço>/deployment.yaml`, na branch `main` de
-`monyzevisoto-source/fase3-argocd`, e cria um commit `deploy: update ...`.
-O Argo CD aplica a alteração pela sincronização automática já configurada.
-Pull requests não atualizam o repositório GitOps.
+## CI/CD e publicação
 
-Configure o secret **ARGOCD_REPO_TOKEN** em **fase3-apps → Settings → Secrets
-and variables → Actions**. Use um token fine-grained com acesso ao repositório
-`fase3-argocd` e permissão **Contents: Read and write**. O usuário do token deve
-poder fazer commits na `main` conforme as regras de proteção dessa branch.
-O `GITHUB_TOKEN` padrão de `fase3-apps` não concede escrita no outro repositório.
+Um push na main executa o workflow do serviço alterado pelos filtros de caminho.
+Uma tag Git no formato vMAJOR.MINOR.PATCH executa os cinco workflows.
 
-A atualização usa `fjogeleit/yaml-update-action` v0.17.0, fixada pelo SHA,
-com checkout do repositório GitOps e seleção do container pelo nome.
-Se a imagem já estiver atualizada, nenhum commit é criado. Novas execuções de
-publicação cancelam execuções anteriores do mesmo workflow; PRs têm grupos separados.
-A action reserializa o YAML, podendo ajustar a formatação e remover comentários.
+Cada pipeline executa build, testes, lint, análise de segurança, Trivy, build da
+imagem e scan da imagem. Em publicação, a imagem recebe a tag
+vMAJOR.MINOR.PATCH-<sha de 7 caracteres> e é enviada ao ECR.
 
-Os jobs GitOps dos cinco serviços compartilham uma fila (`queue: max`) e executam
-um por vez, evitando conflitos entre seus commits. Builds continuam em paralelo.
-O push não usa force. Se houver conflito com uma edição externa ou falha de permissão,
-o pipeline falha e deve ser executado novamente; a imagem permanece no ECR.
+Depois do push, o job GitOps atualiza somente o Deployment correspondente no
+repositório fase3-argocd e cria um commit deploy: update .... Os cinco jobs
+GitOps usam uma fila compartilhada para evitar conflitos entre commits.
+
+Configure o secret ARGOCD_REPO_TOKEN nas Actions deste repositório com permissão
+Contents: Read and write no repositório fase3-argocd.
