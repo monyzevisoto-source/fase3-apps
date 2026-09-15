@@ -27,7 +27,7 @@ variáveis de ambiente estão no README de cada serviço.
 
 ## Estrutura
 
-`text
+```text
 .
 ├── auth-service/
 ├── flag-service/
@@ -41,7 +41,7 @@ variáveis de ambiente estão no README de cada serviço.
 │   ├── evaluation-ci.yml
 │   └── analytics-ci.yml
 └── docs/CICD.png
-`
+```
 
 Cada diretório de serviço contém código-fonte, Dockerfile, dependências, schema
 db/init.sql quando aplicável e README específico. O diretório .github/workflows
@@ -70,22 +70,22 @@ execução detalhada.
 
 Para Go:
 
-`bash
+```bash
 cd auth-service                 # ou evaluation-service
 go mod download
 go build ./...
 go test ./...
 go run .
-`
+```
 
 Para Python:
 
-`bash
+```bash
 cd flag-service                 # ou targeting-service/analytics-service
 python -m pip install -r requirements.txt
 python -m compileall .
 gunicorn --bind 0.0.0.0:8002 app:app
-`
+```
 
 Use a porta correspondente ao serviço. Inicialize os bancos PostgreSQL com o
 arquivo db/init.sql de auth-service, flag-service e targeting-service.
