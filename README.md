@@ -49,17 +49,17 @@ contém um pipeline independente por serviço.
 
 ## Status dos builds
 
-Os indicadores mostram o último resultado do workflow na branch main:
+Os indicadores mostram o resultado do último workflow da release publicada v1.3.0:
 
 | Microsserviço | Build |
 | --- | --- |
-| auth-service | [![Auth CI](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/auth-ci.yml/badge.svg?branch=main)](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/auth-ci.yml) |
-| flag-service | [![Flag CI](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/flag-ci.yml/badge.svg?branch=main)](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/flag-ci.yml) |
-| targeting-service | [![Targeting CI](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/targeting-ci.yml/badge.svg?branch=main)](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/targeting-ci.yml) |
-| evaluation-service | [![Evaluation CI](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/evaluation-ci.yml/badge.svg?branch=main)](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/evaluation-ci.yml) |
-| analytics-service | [![Analytics CI](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/analytics-ci.yml/badge.svg?branch=main)](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/analytics-ci.yml) |
+| auth-service | [![Auth CI](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/auth-ci.yml/badge.svg?branch=v1.3.0)](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/auth-ci.yml) |
+| flag-service | [![Flag CI](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/flag-ci.yml/badge.svg?branch=v1.3.0)](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/flag-ci.yml) |
+| targeting-service | [![Targeting CI](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/targeting-ci.yml/badge.svg?branch=v1.3.0)](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/targeting-ci.yml) |
+| evaluation-service | [![Evaluation CI](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/evaluation-ci.yml/badge.svg?branch=v1.3.0)](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/evaluation-ci.yml) |
+| analytics-service | [![Analytics CI](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/analytics-ci.yml/badge.svg?branch=v1.3.0)](https://github.com/monyzevisoto-source/fase3-apps/actions/workflows/analytics-ci.yml) |
 
-Verde indica sucesso e vermelho indica falha. Clique no badge para ver a
+Os cinco builds da release v1.3.0 estão verdes. Verde indica sucesso e vermelho indica falha. Clique no badge para ver a
 execução detalhada.
 
 ## Diagrama do CI/CD
