@@ -81,11 +81,18 @@ go run .
 Para Python:
 
 ```bash
+python3 -m venv .venv           # execute na raiz do monorepo
+source .venv/bin/activate
 cd flag-service                 # ou targeting-service/analytics-service
-python -m pip install -r requirements.txt
-python -m compileall .
+python -m pip install -r requirements-dev.txt
+python -m pytest
 gunicorn --bind 0.0.0.0:8002 app:app
 ```
+
+`requirements-dev.txt` inclui as dependências de runtime e `pytest`. Para
+Debian/Ubuntu, caso a criação do ambiente virtual falhe por falta do `venv`,
+instale `python3-venv` com privilégios administrativos antes de repetir o
+comando.
 
 Use a porta correspondente ao serviço. Inicialize os bancos PostgreSQL com o
 arquivo db/init.sql de auth-service, flag-service e targeting-service.
