@@ -65,7 +65,11 @@ func TestHTTPClientMetricsAreRecorded(t *testing.T) {
 	if err != nil {
 		t.Fatalf("client.Get() error = %v", err)
 	}
-	response.Body.Close()
+	defer func() {
+		if err := response.Body.Close(); err != nil {
+			t.Errorf("response.Body.Close() error = %v", err)
+		}
+	}()
 
 	var data metricdata.ResourceMetrics
 	if err := reader.Collect(ctx, &data); err != nil {

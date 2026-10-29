@@ -7,7 +7,6 @@ from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import (
     InMemoryMetricReader,
-    MetricReader,
     PeriodicExportingMetricReader,
 )
 from opentelemetry.sdk.resources import Resource, SERVICE_NAME

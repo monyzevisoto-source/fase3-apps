@@ -112,3 +112,12 @@ GitOps usam uma fila compartilhada para evitar conflitos entre commits.
 
 Configure o secret ARGOCD_REPO_TOKEN nas Actions deste repositório com permissão
 Contents: Read and write no repositório fase3-argocd.
+
+## Segurança e configuração
+
+Os arquivos `.env` não devem ser versionados. Os arquivos `.env.example` são
+apenas modelos locais e não contêm credenciais válidas. Antes de publicar esta
+versão, rotacione as credenciais que estavam nos `.env` históricos, incluindo
+`MASTER_KEY`, `SERVICE_API_KEY`, URLs com usuário e senha, credenciais AWS e
+quaisquer chaves de Redis ou PostgreSQL. A remoção dos arquivos no estado atual
+não elimina os valores dos commits anteriores.

@@ -1,0 +1,9 @@
+.git
+.env
+.env.*
+!.env.example
+k8s/secret.yaml
+*.test
+*_test.go
+Dockerfile
+README.md
