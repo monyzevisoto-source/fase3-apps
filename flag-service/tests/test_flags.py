@@ -53,12 +53,16 @@ class FakePool:
 def load_app(monkeypatch, cursor=None):
     monkeypatch.setenv("DATABASE_URL", "postgresql://unit-test")
     monkeypatch.setenv("AUTH_SERVICE_URL", "http://auth")
+    monkeypatch.setenv("OTEL_SERVICE_NAME", "flag-service")
+    monkeypatch.setenv("OTEL_TESTING", "1")
+    monkeypatch.setenv("OTEL_SEMCONV_STABILITY_OPT_IN", "http")
     monkeypatch.setattr(
         psycopg2.pool,
         "SimpleConnectionPool",
         lambda *args, **kwargs: FakePool(cursor or FakeCursor()),
     )
     path = pathlib.Path(__file__).parents[1] / "app.py"
+    monkeypatch.syspath_prepend(str(path.parent))
     spec = importlib.util.spec_from_file_location("flag_service_app", path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module

@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // Contexto global para o Redis
@@ -87,8 +88,19 @@ func main() {
 
 	// Cliente HTTP (com timeout)
 	httpClient := &http.Client{
-		Timeout: 5 * time.Second,
+		Transport: otelhttp.NewTransport(http.DefaultTransport),
+		Timeout:   5 * time.Second,
 	}
+
+	telemetryProvider, err := configureMetrics(context.Background(), "evaluation-service")
+	if err != nil {
+		log.Fatalf("Não foi possível configurar métricas OpenTelemetry: %v", err)
+	}
+	defer func() {
+		if err := telemetryProvider.Shutdown(context.Background()); err != nil {
+			log.Printf("Erro ao finalizar métricas OpenTelemetry: %v", err)
+		}
+	}()
 
 	// Cria a instância da App
 	app := &App{
@@ -108,7 +120,7 @@ func main() {
 	log.Printf("Serviço de Avaliação (Go) rodando na porta %s", port)
 	server := &http.Server{
 		Addr:              ":" + port,
-		Handler:           mux,
+		Handler:           otelhttp.NewHandler(mux, "evaluation-service"),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	if err := server.ListenAndServe(); err != nil {

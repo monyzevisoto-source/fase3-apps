@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/joho/godotenv"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // App struct (para injeção de dependência)
@@ -53,6 +55,16 @@ func main() {
 		MasterKey: masterKey,
 	}
 
+	telemetryProvider, err := configureMetrics(context.Background(), "auth-service")
+	if err != nil {
+		log.Fatalf("Não foi possível configurar métricas OpenTelemetry: %v", err)
+	}
+	defer func() {
+		if err := telemetryProvider.Shutdown(context.Background()); err != nil {
+			log.Printf("Erro ao finalizar métricas OpenTelemetry: %v", err)
+		}
+	}()
+
 	// --- Rotas da API ---
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", app.healthHandler)
@@ -67,7 +79,7 @@ func main() {
 	log.Printf("Serviço de Autenticação (Go) rodando na porta %s", port)
 	server := &http.Server{
 		Addr:              ":" + port,
-		Handler:           mux,
+		Handler:           otelhttp.NewHandler(mux, "auth-service"),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	if err := server.ListenAndServe(); err != nil {

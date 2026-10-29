@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 from functools import wraps
 import logging
 
+from observability import configure_observability
+
 # Configura o logging
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -17,6 +19,7 @@ log = logging.getLogger(__name__)
 load_dotenv() 
 
 app = Flask(__name__)
+telemetry_provider, telemetry_reader = configure_observability(app, "targeting-service")
 
 # --- Configuração ---
 DATABASE_URL = os.getenv("DATABASE_URL")

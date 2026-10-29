@@ -34,14 +34,21 @@ class FakeThread:
     def start(self):
         pass
 
+    def join(self, *args, **kwargs):
+        pass
+
 
 def load_app(monkeypatch):
     monkeypatch.setenv("AWS_REGION", "us-east-1")
     monkeypatch.setenv("AWS_SQS_URL", "https://sqs/unit-test")
     monkeypatch.setenv("AWS_DYNAMODB_TABLE", "analytics")
+    monkeypatch.setenv("OTEL_SERVICE_NAME", "analytics-service")
+    monkeypatch.setenv("OTEL_TESTING", "1")
+    monkeypatch.setenv("OTEL_SEMCONV_STABILITY_OPT_IN", "http")
     monkeypatch.setattr(boto3, "Session", FakeSession)
     monkeypatch.setattr("threading.Thread", FakeThread)
     path = pathlib.Path(__file__).parents[1] / "app.py"
+    monkeypatch.syspath_prepend(str(path.parent))
     spec = importlib.util.spec_from_file_location("analytics_service_app", path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
