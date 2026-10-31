@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -23,6 +24,7 @@ var ctx = context.Background()
 
 // App struct para injeção de dependência
 type App struct {
+	eventWorkers        sync.WaitGroup
 	RedisClient         *redis.Client
 	SqsSvc              *sqs.SQS
 	SqsQueueURL         string
@@ -39,6 +41,12 @@ func main() {
 		log.Fatalf("Não foi possível configurar logs OpenTelemetry: %v", logsErr)
 	}
 	defer shutdownLogs(logsProvider)
+
+	tracesProvider, tracesErr := configureTraces(context.Background(), "evaluation-service")
+	if tracesErr != nil {
+		log.Fatalf("Não foi possível configurar traces OpenTelemetry: %v", tracesErr)
+	}
+	defer shutdownTraces(tracesProvider)
 
 	// --- Configuração ---
 	port := os.Getenv("PORT")
@@ -79,6 +87,7 @@ func main() {
 		log.Fatalf("Não foi possível parsear a URL do Redis: %v", err)
 	}
 	rdb := redis.NewClient(opt)
+	rdb.AddHook(redisTraceHook{})
 	if _, err := rdb.Ping(ctx).Result(); err != nil {
 		log.Fatalf("Não foi possível conectar ao Redis: %v", err)
 	}
@@ -150,4 +159,5 @@ func main() {
 		os.Exit(1)
 	}
 	<-shutdownDone
+	app.eventWorkers.Wait()
 }

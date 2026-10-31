@@ -32,6 +32,12 @@ func main() {
 	}
 	defer shutdownLogs(logsProvider)
 
+	tracesProvider, tracesErr := configureTraces(context.Background(), "auth-service")
+	if tracesErr != nil {
+		log.Fatalf("Não foi possível configurar traces OpenTelemetry: %v", tracesErr)
+	}
+	defer shutdownTraces(tracesProvider)
+
 	// --- Configuração ---
 	port := os.Getenv("PORT")
 	if port == "" {

@@ -92,3 +92,24 @@ Saída esperada: `Chave de API inválida ou inativa`
 ## Logs via OTLP
 
 Os logs de `log.Print*` continuam no console e também são enviados por OTLP HTTP/protobuf ao Collector. Como o logger padrão Go não possui níveis, esses registros são exportados com nível INFO. Configure `OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.observability.svc.cluster.local:4318`; o exporter acrescenta `/v1/logs`. `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` pode definir a URL completa separadamente. `OTEL_LOGS_EXPORTER=none` desativa a exportação. Encerramentos abruptos e `log.Fatal` podem perder registros ainda na fila.
+
+
+## Traces no New Relic
+
+O serviço exporta spans HTTP via OpenTelemetry e OTLP HTTP/protobuf, em lotes, com flush de até 5 segundos no encerramento normal (SIGTERM/SIGINT). O contexto W3C (`traceparent`/`tracestate`) é extraído das requisições recebidas. No evaluation-service, também é propagado nas chamadas HTTP ao flag-service e targeting-service, inclusive nas goroutines. Esses serviços precisam de instrumentação própria para produzir seus spans internos.
+
+Configure as variáveis de traces do `.env.example`. Em produção, injete `OTEL_EXPORTER_OTLP_TRACES_HEADERS` por Secret, nunca no código ou na imagem. Use uma **ingest license key**, não uma user API key. Para conta europeia, use `https://otlp.eu01.nr-data.net:4318/v1/traces`. O endpoint específico de traces preserva os destinos existentes de logs e métricas.
+
+Para usar um Collector, configure `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel-collector.observability.svc.cluster.local:4318/v1/traces`, remova o header de autenticação local e configure no Collector a pipeline de traces e o exporter autenticado do New Relic. Não é necessário instalar o agente Go proprietário.
+
+`OTEL_TRACES_SAMPLER=parentbased_traceidratio` e `OTEL_TRACES_SAMPLER_ARG=1.0` coletam todos os traces raiz e respeitam a decisão do serviço chamador. Reduza a razão para controlar volume. `OTEL_TRACES_EXPORTER=none` desativa a exportação. Não são adicionados bodies, headers de autenticação ou chaves como atributos de spans.
+
+Após reiniciar, faça chamadas às rotas da API (para evaluation, use uma flag sem cache para testar as chamadas externas) e consulte no New Relic:
+
+```sql
+FROM Span SELECT count(*) FACET service.name SINCE 15 minutes ago
+```
+
+Abra um trace do serviço e confira os spans HTTP relacionados. Erros 401/403 de exportação indicam que a chave ou região precisa ser conferida. A continuidade através dos serviços Python depende de sua instrumentação. As consultas PostgreSQL do auth-service, os comandos Redis e o envio SQS do evaluation-service produzem spans próprios. Valores de parâmetros SQL, chaves/valores Redis e bodies SQS não são exportados. O SQS recebe `traceparent`/`tracestate` como MessageAttributes; o consumidor precisa extraí-los para continuar o trace. O envio assíncrono tem timeout de 5 segundos e é aguardado no encerramento normal. Cache miss (`redis.Nil`) e consulta sem resultado (`sql.ErrNoRows`) não são marcados como falhas de infraestrutura.
+
+Referência: https://docs.newrelic.com/docs/opentelemetry/best-practices/opentelemetry-otlp/
