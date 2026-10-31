@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -30,6 +33,12 @@ type App struct {
 
 func main() {
 	_ = godotenv.Load() // Carrega .env para dev local
+
+	logsProvider, logsErr := configureLogs(context.Background(), "evaluation-service")
+	if logsErr != nil {
+		log.Fatalf("Não foi possível configurar logs OpenTelemetry: %v", logsErr)
+	}
+	defer shutdownLogs(logsProvider)
 
 	// --- Configuração ---
 	port := os.Getenv("PORT")
@@ -123,7 +132,22 @@ func main() {
 		Handler:           otelhttp.NewHandler(mux, "evaluation-service"),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-	if err := server.ListenAndServe(); err != nil {
-		log.Fatal(err)
+	stopCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	shutdownDone := make(chan struct{})
+	go func() {
+		defer close(shutdownDone)
+		<-stopCtx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			log.Printf("Erro ao finalizar servidor HTTP: %v", err)
+		}
+	}()
+	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Printf("Erro no servidor HTTP: %v", err)
+		shutdownLogs(logsProvider)
+		os.Exit(1)
 	}
+	<-shutdownDone
 }

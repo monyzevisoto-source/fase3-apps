@@ -89,3 +89,6 @@ curl http://localhost:8001/validate \
 ```
 
 Saída esperada: `Chave de API inválida ou inativa`
+## Logs via OTLP
+
+Os logs de `log.Print*` continuam no console e também são enviados por OTLP HTTP/protobuf ao Collector. Como o logger padrão Go não possui níveis, esses registros são exportados com nível INFO. Configure `OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.observability.svc.cluster.local:4318`; o exporter acrescenta `/v1/logs`. `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` pode definir a URL completa separadamente. `OTEL_LOGS_EXPORTER=none` desativa a exportação. Encerramentos abruptos e `log.Fatal` podem perder registros ainda na fila.

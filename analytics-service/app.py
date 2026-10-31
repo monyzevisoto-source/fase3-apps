@@ -1,5 +1,6 @@
 import os
 import sys
+import signal
 import threading
 import json
 import uuid
@@ -17,6 +18,9 @@ log = logging.getLogger(__name__)
 
 # Carrega .env para desenvolvimento local
 load_dotenv()
+
+app = Flask(__name__)
+telemetry_provider, telemetry_reader = configure_observability(app, "analytics-service")
 
 # --- Configuração ---
 AWS_REGION = os.getenv("AWS_REGION")
@@ -117,9 +121,6 @@ def sqs_worker_loop():
 
 # --- Servidor Flask (Apenas para Health Check) ---
 
-app = Flask(__name__)
-telemetry_provider, telemetry_reader = configure_observability(app, "analytics-service")
-
 @app.route('/health')
 def health():
     # Uma verificação de saúde real poderia checar a conexão com o DynamoDB/SQS
@@ -137,6 +138,8 @@ def start_worker():
 start_worker()
 
 if __name__ == '__main__':
+    # Let the SDK's atexit shutdown flush queued logs during Kubernetes termination.
+    signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
     port = int(os.getenv("PORT", 8005))
     # Bind to all interfaces so the container can receive service traffic.
     app.run(host='0.0.0.0', port=port, debug=False)  # nosec B104

@@ -3,9 +3,12 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
@@ -22,6 +25,12 @@ type App struct {
 func main() {
 	// Carrega o .env para desenvolvimento local. Em produção, isso não fará nada.
 	_ = godotenv.Load()
+
+	logsProvider, logsErr := configureLogs(context.Background(), "auth-service")
+	if logsErr != nil {
+		log.Fatalf("Não foi possível configurar logs OpenTelemetry: %v", logsErr)
+	}
+	defer shutdownLogs(logsProvider)
 
 	// --- Configuração ---
 	port := os.Getenv("PORT")
@@ -82,9 +91,24 @@ func main() {
 		Handler:           otelhttp.NewHandler(mux, "auth-service"),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-	if err := server.ListenAndServe(); err != nil {
-		log.Fatal(err)
+	stopCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	shutdownDone := make(chan struct{})
+	go func() {
+		defer close(shutdownDone)
+		<-stopCtx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			log.Printf("Erro ao finalizar servidor HTTP: %v", err)
+		}
+	}()
+	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Printf("Erro no servidor HTTP: %v", err)
+		shutdownLogs(logsProvider)
+		os.Exit(1)
 	}
+	<-shutdownDone
 }
 
 // connectDB inicializa e testa a conexão com o PostgreSQL

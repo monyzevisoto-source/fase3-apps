@@ -101,3 +101,7 @@ Saída (exemplo): `{"flag_name":"enable-new-dashboard","user_id":"user-abc","res
 
 **4. Verifique a Fila SQS:** Após fazer as chamadas acima, vá até o console da AWS, abra sua fila SQS e verifique se as mensagens (`EvaluationEvent`) estão chegando.
 
+
+## Logs via OTLP
+
+Os logs de `log.Print*` continuam no console e também são enviados por OTLP HTTP/protobuf ao Collector. Como o logger padrão Go não possui níveis, esses registros são exportados com nível INFO. Configure `OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.observability.svc.cluster.local:4318`; o exporter acrescenta `/v1/logs`. `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` pode definir a URL completa separadamente. `OTEL_LOGS_EXPORTER=none` desativa a exportação. Encerramentos abruptos e `log.Fatal` podem perder registros ainda na fila.

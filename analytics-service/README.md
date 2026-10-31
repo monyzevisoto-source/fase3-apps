@@ -103,3 +103,6 @@ INFO:Evento ... (Flag: enable-new-dashboard) salvo no DynamoDB.
 Vá até o console da AWS, abra o **DynamoDB**, selecione a tabela `ToggleMasterAnalytics` e clique em "Explore table items".
 
 Você verá os itens que o worker acabou de inserir.
+## Logs via OTLP
+
+Os registros do módulo `logging` são exportados em lotes via OTLP HTTP/protobuf, preservando os handlers do console, nível e exceções. Configure `OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.observability.svc.cluster.local:4318`; o exporter acrescenta `/v1/logs`. `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` permite uma URL completa específica. `OTEL_LOGS_EXPORTER=none` desativa a exportação. `print()` e saídas arbitrárias de subprocessos não passam pelo módulo `logging`.

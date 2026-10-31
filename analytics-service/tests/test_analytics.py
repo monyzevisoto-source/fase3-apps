@@ -5,6 +5,9 @@ import sys
 
 import boto3
 
+# Initialize telemetry imports before tests replace threading.Thread.
+import observability
+
 
 class FakeClient:
     def __init__(self):

@@ -1,5 +1,6 @@
 import os
 import sys
+import signal
 import psycopg2
 import requests
 from psycopg2.extras import RealDictCursor
@@ -244,6 +245,8 @@ def delete_flag(name):
             pool.putconn(conn)
 
 if __name__ == '__main__':
+    # Let the SDK's atexit shutdown flush queued logs during Kubernetes termination.
+    signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
     port = int(os.getenv("PORT", 8002))
     # Bind to all interfaces so the container can receive service traffic.
     app.run(host='0.0.0.0', port=port, debug=False)  # nosec B104

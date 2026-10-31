@@ -104,3 +104,6 @@ curl -X PUT http://localhost:8002/flags/enable-new-dashboard \
 -d '{"is_enabled": false}'
 ```
 Saída esperada: (O JSON da flag atualizada, com `"is_enabled": false`).
+## Logs via OTLP
+
+Os registros do módulo `logging` são exportados em lotes via OTLP HTTP/protobuf, preservando os handlers do console, nível e exceções. Configure `OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.observability.svc.cluster.local:4318`; o exporter acrescenta `/v1/logs`. `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` permite uma URL completa específica. `OTEL_LOGS_EXPORTER=none` desativa a exportação. `print()` e saídas arbitrárias de subprocessos não passam pelo módulo `logging`.
