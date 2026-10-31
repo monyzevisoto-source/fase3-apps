@@ -1,3 +1,4 @@
+from tracing import configure_traces
 import os
 import logging
 
@@ -9,6 +10,7 @@ from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry import metrics
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import (
     InMemoryMetricReader,
@@ -39,7 +41,10 @@ def configure_observability(app, service_name: str):
 
     configure_logs(Resource({SERVICE_NAME: os.getenv("OTEL_SERVICE_NAME", service_name)}))
 
-    FlaskInstrumentor().instrument_app(app)
+    tracer_provider = configure_traces(Resource.create({SERVICE_NAME: os.getenv("OTEL_SERVICE_NAME", service_name)}))
+    if not BotocoreInstrumentor().is_instrumented_by_opentelemetry:
+        BotocoreInstrumentor().instrument(tracer_provider=tracer_provider)
+    FlaskInstrumentor().instrument_app(app, tracer_provider=tracer_provider)
     return _provider, _metric_reader
 
 

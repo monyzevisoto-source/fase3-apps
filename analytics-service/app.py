@@ -11,6 +11,9 @@ from botocore.exceptions import NoCredentialsError, ClientError
 from flask import Flask, jsonify
 from dotenv import load_dotenv
 from observability import configure_observability
+from opentelemetry import trace
+from opentelemetry.trace import SpanKind, Status, StatusCode
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 # Configura o logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -49,6 +52,21 @@ except Exception as e:
 # --- SQS Worker ---
 
 def process_message(message):
+    """Continue the W3C trace published by evaluation-service via SQS attributes."""
+    carrier = {
+        key: value.get("StringValue", "")
+        for key, value in message.get("MessageAttributes", {}).items()
+        if key in ("traceparent", "tracestate") and isinstance(value, dict)
+    }
+    parent = TraceContextTextMapPropagator().extract(carrier)
+    with trace.get_tracer("analytics-service/worker").start_as_current_span(
+        "SQS process", context=parent, kind=SpanKind.CONSUMER,
+        attributes={"messaging.system": "aws_sqs", "messaging.operation.type": "process"},
+    ):
+        _process_message(message)
+
+
+def _process_message(message):
     """ Processa uma única mensagem SQS e a insere no DynamoDB """
     try:
         log.info(f"Processando mensagem ID: {message['MessageId']}")
@@ -81,12 +99,15 @@ def process_message(message):
         )
         
     except json.JSONDecodeError:
+        trace.get_current_span().set_status(Status(StatusCode.ERROR, "Message processing failed"))
         log.error(f"Erro ao decodificar JSON da mensagem ID: {message['MessageId']}")
         # Não deleta a mensagem, pode ser uma "poison pill"
     except ClientError as e:
+        trace.get_current_span().set_status(Status(StatusCode.ERROR, "Message processing failed"))
         log.error(f"Erro do Boto3 (DynamoDB ou SQS) ao processar {message['MessageId']}: {e}")
         # Não deleta a mensagem, tenta novamente
     except Exception as e:
+        trace.get_current_span().set_status(Status(StatusCode.ERROR, "Message processing failed"))
         log.error(f"Erro inesperado ao processar {message['MessageId']}: {e}")
         # Não deleta a mensagem, tenta novamente
 
@@ -99,7 +120,8 @@ def sqs_worker_loop():
             response = sqs_client.receive_message(
                 QueueUrl=SQS_QUEUE_URL,
                 MaxNumberOfMessages=10,  # Processa em lotes de até 10
-                WaitTimeSeconds=20
+                WaitTimeSeconds=20,
+                MessageAttributeNames=["traceparent", "tracestate"],
             )
             
             messages = response.get('Messages', [])

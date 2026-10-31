@@ -1,3 +1,4 @@
+from tracing import configure_traces
 import os
 import logging
 
@@ -10,6 +11,7 @@ from opentelemetry import metrics
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import (
     InMemoryMetricReader,
@@ -41,9 +43,12 @@ def configure_observability(app, service_name: str):
 
     configure_logs(Resource({SERVICE_NAME: os.getenv("OTEL_SERVICE_NAME", service_name)}))
 
-    FlaskInstrumentor().instrument_app(app)
+    tracer_provider = configure_traces(Resource.create({SERVICE_NAME: os.getenv("OTEL_SERVICE_NAME", service_name)}))
+    if not Psycopg2Instrumentor().is_instrumented_by_opentelemetry:
+        Psycopg2Instrumentor().instrument(tracer_provider=tracer_provider, capture_parameters=False)
+    FlaskInstrumentor().instrument_app(app, tracer_provider=tracer_provider)
     if not _instrumented_requests:
-        RequestsInstrumentor().instrument()
+        RequestsInstrumentor().instrument(tracer_provider=tracer_provider)
         _instrumented_requests = True
     return _provider, _metric_reader
 

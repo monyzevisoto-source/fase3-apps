@@ -2,6 +2,9 @@ import importlib.util
 import json
 import pathlib
 import sys
+import threading
+
+_REAL_THREAD = threading.Thread
 
 import boto3
 
@@ -49,7 +52,13 @@ def load_app(monkeypatch):
     monkeypatch.setenv("OTEL_TESTING", "1")
     monkeypatch.setenv("OTEL_SEMCONV_STABILITY_OPT_IN", "http")
     monkeypatch.setattr(boto3, "Session", FakeSession)
-    monkeypatch.setattr("threading.Thread", FakeThread)
+    def worker_safe_thread(*args, **kwargs):
+        target = kwargs.get("target")
+        if getattr(target, "__name__", "") == "sqs_worker_loop":
+            return FakeThread(*args, **kwargs)
+        return _REAL_THREAD(*args, **kwargs)
+
+    monkeypatch.setattr("threading.Thread", worker_safe_thread)
     path = pathlib.Path(__file__).parents[1] / "app.py"
     monkeypatch.syspath_prepend(str(path.parent))
     spec = importlib.util.spec_from_file_location("analytics_service_app", path)

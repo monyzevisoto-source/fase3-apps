@@ -95,3 +95,29 @@ Saída esperada: (O JSON da regra atualizada, com `"value": 75`).
 ## Logs via OTLP
 
 Os registros do módulo `logging` são exportados em lotes via OTLP HTTP/protobuf, preservando os handlers do console, nível e exceções. Configure `OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.observability.svc.cluster.local:4318`; o exporter acrescenta `/v1/logs`. `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` permite uma URL completa específica. `OTEL_LOGS_EXPORTER=none` desativa a exportação. `print()` e saídas arbitrárias de subprocessos não passam pelo módulo `logging`.
+
+
+## Traces OpenTelemetry
+
+O SDK exporta spans em lotes por OTLP HTTP/protobuf ao Collector configurado em
+`OTEL_EXPORTER_OTLP_ENDPOINT` (acrescenta `/v1/traces`). O Collector central autentica
+no New Relic EU; a aplicação não precisa da license key. Logs e métricas mantêm
+suas configurações existentes. `OTEL_TRACES_EXPORTER=none` desativa os traces;
+`OTEL_TRACES_SAMPLER=parentbased_traceidratio` e `OTEL_TRACES_SAMPLER_ARG=1.0`
+respeitam o sampling recebido e coletam todos os traces raiz.
+
+Flask extrai W3C `traceparent`/`tracestate`. Flag e targeting instrumentam requests
+(inclusive a validação no auth-service) e consultas psycopg2, sem capturar os
+parâmetros SQL. Analytics instrumenta chamadas botocore (SQS e DynamoDB), solicita
+os atributos W3C da mensagem e abre um span de consumo com o contexto enviado pelo
+evaluation-service. Falhas de processamento marcam o span como erro e preservam
+a mensagem para retry. Bodies e headers de autenticação não são adicionados como
+atributos pela aplicação. Use o processo normal de inicialização por worker;
+não use Gunicorn `--preload`, pois os providers são criados na importação.
+O SDK registra o shutdown via atexit; SIGTERM no entrypoint Python permite o flush.
+
+Valide com tráfego nas rotas e, no analytics, uma mensagem SQS válida:
+
+```sql
+FROM Span SELECT count(*) FACET service.name, name SINCE 15 minutes ago
+```
