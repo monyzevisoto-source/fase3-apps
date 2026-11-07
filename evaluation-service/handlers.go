@@ -14,6 +14,13 @@ type EvaluationResponse struct {
 	Result   bool   `json:"result"`
 }
 
+// forcedFailureHandler intentionally makes every HTTP request fail. This is
+// used only to simulate a bad deployment and exercise automatic rollback.
+func forcedFailureHandler(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	http.Error(w, `{"error":"simulated deployment failure"}`, http.StatusInternalServerError)
+}
+
 func (a *App) healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
