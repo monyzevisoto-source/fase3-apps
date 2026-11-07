@@ -10,7 +10,72 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
+	"time"
 )
+
+const cacheTTL = 30 * time.Second
+
+func (a *App) getDecisionContext(ctx context.Context, userID, flagName string) (bool, error) {
+	info, err := a.getCombinedFlagInfoContext(ctx, flagName)
+	if err != nil {
+		return false, err
+	}
+	return a.runEvaluationLogic(info, userID), nil
+}
+
+func (a *App) getCombinedFlagInfoContext(ctx context.Context, flagName string) (*CombinedFlagInfo, error) {
+	cacheKey := fmt.Sprintf("flag_info:%s", flagName)
+	val, err := a.RedisClient.Get(ctx, cacheKey).Result()
+	if err == nil {
+		var info CombinedFlagInfo
+		if err := json.Unmarshal([]byte(val), &info); err == nil {
+			log.Printf("Cache HIT para flag '%s'", flagName)
+			return &info, nil
+		}
+		log.Printf("Erro ao desserializar cache para flag '%s': %v", flagName, err)
+	}
+
+	log.Printf("Cache MISS para flag '%s'", flagName)
+	info, err := a.fetchFromServicesContext(ctx, flagName)
+	if err != nil {
+		return nil, err
+	}
+
+	if jsonData, err := json.Marshal(info); err == nil {
+		if err := a.RedisClient.Set(ctx, cacheKey, jsonData, cacheTTL).Err(); err != nil {
+			log.Printf("Erro ao salvar cache para flag '%s': %v", flagName, err)
+		}
+	}
+	return info, nil
+}
+
+func (a *App) fetchFromServicesContext(ctx context.Context, flagName string) (*CombinedFlagInfo, error) {
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	var flagInfo *Flag
+	var ruleInfo *TargetingRule
+	var flagErr, ruleErr error
+
+	go func() {
+		defer wg.Done()
+		flagInfo, flagErr = a.fetchFlagContext(ctx, flagName)
+	}()
+	go func() {
+		defer wg.Done()
+		ruleInfo, ruleErr = a.fetchRuleContext(ctx, flagName)
+	}()
+	wg.Wait()
+
+	if flagErr != nil {
+		return nil, flagErr
+	}
+	if ruleErr != nil {
+		log.Printf("Aviso: Nenhuma regra de segmentação encontrada para '%s'. Usando padrão.", flagName)
+	}
+	return &CombinedFlagInfo{Flag: flagInfo, Rule: ruleInfo}, nil
+}
 
 func (a *App) fetchFlag(flagName string) (*Flag, error) {
 	return a.fetchFlagContext(context.Background(), flagName)
@@ -49,6 +114,42 @@ func (a *App) fetchFlagContext(ctx context.Context, flagName string) (*Flag, err
 		return nil, fmt.Errorf("erro ao desserializar resposta do flag-service: %w", err)
 	}
 	return &flag, nil
+}
+
+func (a *App) fetchRuleContext(ctx context.Context, flagName string) (*TargetingRule, error) {
+	url := fmt.Sprintf("%s/rules/%s", a.TargetingServiceURL, flagName)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("SERVICE_API_KEY"))
+
+	resp, err := a.HttpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("erro ao chamar targeting-service: %w", err)
+	}
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("erro ao fechar resposta HTTP: %v", err)
+		}
+	}()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, &NotFoundError{flagName}
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("targeting-service retornou status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("erro ao ler resposta do targeting-service: %w", err)
+	}
+	var rule TargetingRule
+	if err := json.Unmarshal(body, &rule); err != nil {
+		return nil, fmt.Errorf("erro ao desserializar resposta do targeting-service: %w", err)
+	}
+	return &rule, nil
 }
 
 // runEvaluationLogic é onde a decisão é tomada

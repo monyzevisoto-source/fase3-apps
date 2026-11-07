@@ -130,12 +130,15 @@ func main() {
 		TargetingServiceURL: targetingSvcURL,
 	}
 
+	// --- Rotas ---
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", app.healthHandler)
+	mux.HandleFunc("/evaluate", app.evaluationHandler)
+
 	log.Printf("Serviço de Avaliação (Go) rodando na porta %s", port)
 	server := &http.Server{
-		Addr: ":" + port,
-		// Intentionally fail every endpoint to simulate a bad deployment and
-		// exercise the platform's automatic rollback behavior.
-		Handler:           otelhttp.NewHandler(http.HandlerFunc(forcedFailureHandler), "evaluation-service"),
+		Addr:              ":" + port,
+		Handler:           otelhttp.NewHandler(mux, "evaluation-service"),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	stopCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

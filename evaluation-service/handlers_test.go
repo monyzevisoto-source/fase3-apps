@@ -6,15 +6,24 @@ import (
 	"testing"
 )
 
-func TestForcedFailureHandlerAlwaysReturns500(t *testing.T) {
-	for _, path := range []string{"/health", "/evaluate", "/unknown"} {
-		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, path, nil)
+func TestHealthHandlerReturnsOK(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/health", nil)
 
-		forcedFailureHandler(recorder, request)
+	(&App{}).healthHandler(recorder, request)
 
-		if recorder.Code != http.StatusInternalServerError {
-			t.Fatalf("path %s returned status %d, want %d", path, recorder.Code, http.StatusInternalServerError)
-		}
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("returned status %d, want %d", recorder.Code, http.StatusOK)
+	}
+}
+
+func TestEvaluationHandlerRequiresParameters(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/evaluate", nil)
+
+	(&App{}).evaluationHandler(recorder, request)
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("returned status %d, want %d", recorder.Code, http.StatusBadRequest)
 	}
 }
