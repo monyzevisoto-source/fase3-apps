@@ -24,13 +24,6 @@ type EvaluationEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-// sendEvaluationEvent envia um evento para a fila SQS
-func (a *App) sendEvaluationEvent(userID, flagName string, result bool) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	a.sendEvaluationEventContext(ctx, userID, flagName, result)
-}
-
 func (a *App) sendEvaluationEventContext(ctx context.Context, userID, flagName string, result bool) {
 	// Se a URL da fila não foi configurada, apenas loga localmente e sai.
 	if a.SqsSvc == nil || a.SqsQueueURL == "" {

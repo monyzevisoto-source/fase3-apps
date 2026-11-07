@@ -51,12 +51,20 @@ func TestPostgresQuerySpans(t *testing.T) {
 	previous := otel.GetTracerProvider()
 	otel.SetTracerProvider(provider)
 	defer otel.SetTracerProvider(previous)
-	defer provider.Shutdown(context.Background())
+	defer func() {
+		if err := provider.Shutdown(context.Background()); err != nil {
+			t.Errorf("failed to shut down tracer provider: %v", err)
+		}
+	}()
 	db, err := sql.Open("trace-test", "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("failed to close database: %v", err)
+		}
+	}()
 	app := &App{DB: db}
 	ctx, parent := provider.Tracer("test").Start(context.Background(), "request")
 	defer parent.End()

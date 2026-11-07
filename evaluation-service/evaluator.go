@@ -19,11 +19,6 @@ const (
 	CACHE_TTL = 30 * time.Second
 )
 
-// getDecision é o wrapper principal
-func (a *App) getDecision(userID, flagName string) (bool, error) {
-	return a.getDecisionContext(context.Background(), userID, flagName)
-}
-
 func (a *App) getDecisionContext(ctx context.Context, userID, flagName string) (bool, error) {
 	// 1. Obter os dados da flag (do cache ou dos serviços)
 	info, err := a.getCombinedFlagInfoContext(ctx, flagName)
@@ -33,11 +28,6 @@ func (a *App) getDecisionContext(ctx context.Context, userID, flagName string) (
 
 	// 2. Executar a lógica de avaliação
 	return a.runEvaluationLogic(info, userID), nil
-}
-
-// getCombinedFlagInfo busca os dados no Redis, com fallback para os microsserviços
-func (a *App) getCombinedFlagInfo(flagName string) (*CombinedFlagInfo, error) {
-	return a.getCombinedFlagInfoContext(context.Background(), flagName)
 }
 
 func (a *App) getCombinedFlagInfoContext(ctx context.Context, flagName string) (*CombinedFlagInfo, error) {
@@ -72,11 +62,6 @@ func (a *App) getCombinedFlagInfoContext(ctx context.Context, flagName string) (
 	}
 
 	return info, nil
-}
-
-// fetchFromServices busca dados do flag-service e targeting-service concorrentemente
-func (a *App) fetchFromServices(flagName string) (*CombinedFlagInfo, error) {
-	return a.fetchFromServicesContext(context.Background(), flagName)
 }
 
 func (a *App) fetchFromServicesContext(ctx context.Context, flagName string) (*CombinedFlagInfo, error) {
@@ -152,10 +137,6 @@ func (a *App) fetchFlagContext(ctx context.Context, flagName string) (*Flag, err
 		return nil, fmt.Errorf("erro ao desserializar resposta do flag-service: %w", err)
 	}
 	return &flag, nil
-}
-
-func (a *App) fetchRule(flagName string) (*TargetingRule, error) {
-	return a.fetchRuleContext(context.Background(), flagName)
 }
 
 func (a *App) fetchRuleContext(ctx context.Context, flagName string) (*TargetingRule, error) {

@@ -9,7 +9,7 @@ _REAL_THREAD = threading.Thread
 import boto3
 
 # Initialize telemetry imports before tests replace threading.Thread.
-import observability
+__import__("observability")
 
 
 class FakeClient:
