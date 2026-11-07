@@ -4,9 +4,9 @@ import pathlib
 import sys
 import threading
 
-_REAL_THREAD = threading.Thread
-
 import boto3
+
+_REAL_THREAD = threading.Thread
 
 # Initialize telemetry imports before tests replace threading.Thread.
 __import__("observability")
