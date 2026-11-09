@@ -101,6 +101,23 @@ Saída (exemplo): `{"flag_name":"enable-new-dashboard","user_id":"user-abc","res
 
 **4. Verifique a Fila SQS:** Após fazer as chamadas acima, vá até o console da AWS, abra sua fila SQS e verifique se as mensagens (`EvaluationEvent`) estão chegando.
 
+**5. Simule uma falha para testar alertas e auto-healing:**
+
+```bash
+# Ativa o modo de erro: /evaluate passa a responder HTTP 500
+curl -X POST http://localhost:8004/error
+
+curl "http://localhost:8004/evaluate?user_id=user-123&flag_name=enable-new-dashboard"
+# HTTP 500
+
+# Desativa o modo de erro
+curl -X POST http://localhost:8004/error/disable
+```
+
+O modo de erro fica apenas em memória no processo e é perdido quando o pod é
+reiniciado. O endpoint `/health` continua respondendo HTTP 200 para que a
+readiness/liveness probe não reinicie o pod durante o teste.
+
 
 ## Logs via OTLP
 

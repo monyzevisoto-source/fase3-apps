@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -25,6 +26,7 @@ var ctx = context.Background()
 // App struct para injeção de dependência
 type App struct {
 	eventWorkers        sync.WaitGroup
+	errorMode           atomic.Bool
 	RedisClient         *redis.Client
 	SqsSvc              *sqs.SQS
 	SqsQueueURL         string
@@ -133,6 +135,8 @@ func main() {
 	// --- Rotas ---
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", app.healthHandler)
+	mux.HandleFunc("/error", app.errorHandler)
+	mux.HandleFunc("/error/disable", app.disableErrorHandler)
 	mux.HandleFunc("/evaluate", app.evaluationHandler)
 
 	log.Printf("Serviço de Avaliação (Go) rodando na porta %s", port)

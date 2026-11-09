@@ -22,8 +22,36 @@ func (a *App) healthHandler(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
+// errorHandler ativa um modo de falha controlado para testar alertas e auto-healing.
+// A probe de saúde permanece disponível para que o pod não seja reiniciado pelo Kubernetes.
+func (a *App) errorHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, `{"error":"método não permitido"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	a.errorMode.Store(true)
+	writeJSON(w, http.StatusOK, map[string]string{"status": "error mode enabled"})
+}
+
+func (a *App) disableErrorHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, `{"error":"método não permitido"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	a.errorMode.Store(false)
+	writeJSON(w, http.StatusOK, map[string]string{"status": "error mode disabled"})
+}
+
 func (a *App) evaluationHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	if a.errorMode.Load() {
+		http.Error(w, `{"error":"modo de erro habilitado"}`, http.StatusInternalServerError)
+		return
+	}
 
 	userID := r.URL.Query().Get("user_id")
 	flagName := r.URL.Query().Get("flag_name")
@@ -58,5 +86,13 @@ func (a *App) evaluationHandler(w http.ResponseWriter, r *http.Request) {
 		Result:   result,
 	}); err != nil {
 		log.Printf("Erro ao serializar resposta de avaliação: %v", err)
+	}
+}
+
+func writeJSON(w http.ResponseWriter, status int, value any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(value); err != nil {
+		log.Printf("Erro ao serializar resposta JSON: %v", err)
 	}
 }
